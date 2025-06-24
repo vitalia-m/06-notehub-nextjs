@@ -1,5 +1,4 @@
 "use client";
-
 import { fetchNotes } from "../../lib/api";
 import NoteList from "@/components/NoteList/NoteList";
 import NoteModal from "@/components/NoteModal/NoteModal";
@@ -9,8 +8,16 @@ import css from "./NotesPage.module.css";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useState } from "react";
 import { useDebounce } from "use-debounce";
+import { Note } from "@/types/note";
 
-export default function NotesClient() {
+interface NotesClientProps {
+  initialResponse: {
+    notes: Note[];
+    totalPages: number;
+  };
+}
+
+export default function NotesClient({ initialResponse }: NotesClientProps) {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [query, setQuery] = useState<string>("");
   const [debouncedQuery] = useDebounce<string>(query, 1000);
@@ -19,7 +26,9 @@ export default function NotesClient() {
   const loadNotes = useQuery({
     queryKey: ["Notes", debouncedQuery, currentPage],
     queryFn: () => fetchNotes(debouncedQuery, currentPage),
+    initialData: initialResponse,
     placeholderData: keepPreviousData,
+    refetchOnMount: false,
   });
 
   const modalOpenFn = (): void => {
@@ -29,16 +38,19 @@ export default function NotesClient() {
   const modalCloseFn = (): void => {
     setModalOpen(false);
   };
-
-  const handlePageChange = (page: number): void => {
+  const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
 
-  const onChangeQuery = (event: React.ChangeEvent<HTMLInputElement>): void => {
+  const onChangeQuery = (event: React.ChangeEvent<HTMLInputElement>) => {
     const query = event.target.value;
     setQuery(query);
     setCurrentPage(1);
   };
+
+  if (loadNotes.isError) {
+    throw new Error();
+  }
 
   return (
     <div className={css.app}>
@@ -47,7 +59,7 @@ export default function NotesClient() {
         {loadNotes.isSuccess && loadNotes.data.totalPages > 1 && (
           <Pagination
             pageCount={loadNotes.data.totalPages}
-            setCurrentPage={handlePageChange}
+            onPageChange={handlePageChange}
             currentPage={currentPage}
           />
         )}
@@ -55,15 +67,6 @@ export default function NotesClient() {
           Create note +
         </button>
       </header>
-      {loadNotes.isPending && !loadNotes.isSuccess && (
-        <p className={css.loading}>Loading your notes...</p>
-      )}
-      {loadNotes.isError && (
-        <p className={css.loaderror}>
-          An error occured: {JSON.stringify(loadNotes.error)}, please reload the
-          page!
-        </p>
-      )}
       {loadNotes.isSuccess && <NoteList notes={loadNotes.data.notes} />}
       {modalOpen && <NoteModal onClose={modalCloseFn} />}
     </div>
