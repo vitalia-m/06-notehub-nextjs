@@ -26,7 +26,8 @@ export default function NotesClient({ initialResponse }: NotesClientProps) {
   const loadNotes = useQuery({
     queryKey: ["Notes", debouncedQuery, currentPage],
     queryFn: () => fetchNotes(debouncedQuery, currentPage),
-    initialData: initialResponse,
+    initialData:
+      currentPage === 1 && debouncedQuery === "" ? initialResponse : undefined,
     placeholderData: keepPreviousData,
     refetchOnMount: false,
   });
